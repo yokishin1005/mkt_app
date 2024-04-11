@@ -37,6 +37,12 @@ For any information not provided, please infer it from the given information. We
    - Infer and identify the problems or challenges currently faced by the target, the desired solutions or benefits they seek, the specific features or characteristics they require in products or services, the expected price range, preferred purchase channels (online, brick-and-mortar), potential barriers to purchase, necessary support or service to enhance satisfaction, current level of knowledge about the product or service, usage of competitor products or services, the purpose or intended use of the product or service, factors influencing their decision-making (quality, price, brand, reputation), post-purchase expectations or concerns, feedback or evaluation of the product or service, and potential future needs that may arise.
    - Provide actionable insights into how these needs can be addressed and fulfilled through tailored marketing strategies and personalized offerings.
 
+4.キャッチフレーズ:
+    Based on the insights from points 1, 2, and 3, propose at least five catchphrases that would likely appeal to and attract the targeted persona.
+    Craft compelling and memorable phrases that resonate with the target's demographic profile, psychographic characteristics, and specific needs.
+    Use language and tone that align with the target's preferences and communication style to create a strong emotional connection and motivate action.
+    Highlight the unique benefits, solutions, or experiences that the product, service, or brand offers to address the target's challenges and fulfill their desires.
+    Aim for concise, impactful, and easily understandable catchphrases that effectively communicate the core message and value proposition.
 """
 
     # OpenAI APIを使用して回答を生成
