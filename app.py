@@ -45,11 +45,11 @@ For any information not provided, please infer it from the given information. We
     Aim for concise, impactful, and easily understandable catchphrases that effectively communicate the core message and value proposition.
     Present the proposed catchphrases in a bullet-point format, ensuring each catchphrase is clearly distinguishable and stands on its own.
     Example format:
-    Catchphrase 1: [Compelling phrase that resonates with the target]
-    Catchphrase 2: [Memorable phrase highlighting unique benefits]
-    Catchphrase 3: [Impactful phrase addressing target's challenges]
-    Catchphrase 4: [Concise phrase communicating core message]
-    Catchphrase 5: [Engaging phrase motivating action]
+    ・Catchphrase 1: [Compelling phrase that resonates with the target]
+    ・Catchphrase 2: [Memorable phrase highlighting unique benefits]
+    ・Catchphrase 3: [Impactful phrase addressing target's challenges]
+    ・Catchphrase 4: [Concise phrase communicating core message]
+    ・Catchphrase 5: [Engaging phrase motivating action]
 """
 
     # OpenAI APIを使用して回答を生成
