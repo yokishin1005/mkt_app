@@ -61,7 +61,7 @@ For any information not provided, please infer it from the given information. We
 st.set_page_config(page_title="コピーアプリ AiDist", layout="wide")
 
 # タイトルの表示
-st.title("マーケティングインサイトジェネレーター")
+st.title("AiDist")
 
 # サイドバーの設定
 st.sidebar.header("ターゲット情報入力")
