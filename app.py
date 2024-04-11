@@ -64,7 +64,7 @@ For any information not provided, please infer it from the given information. We
     return res
 
 # Streamlitアプリケーションの設定
-st.set_page_config(page_title="マーケティングインサイトジェネレーター", layout="wide")
+st.set_page_config(page_title="コピーアプリ AiDist", layout="wide")
 
 # タイトルの表示
 st.title("マーケティングインサイトジェネレーター")
