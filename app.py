@@ -58,10 +58,10 @@ For any information not provided, please infer it from the given information. We
     return res
 
 # Streamlitアプリケーションの設定
-st.set_page_config(page_title="コピーアプリ AiDist", layout="wide")
+st.set_page_config(page_title="Insight & CacthPhrase Generator", layout="wide")
 
 # タイトルの表示
-st.title("AiDist")
+st.title("Insight & CacthPhrase Generator")
 
 # サイドバーの設定
 st.sidebar.header("ターゲット情報入力")
