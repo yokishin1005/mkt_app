@@ -49,7 +49,7 @@ For any information not provided, please infer it from the given information. We
     # OpenAI APIを使用して回答を生成
     client = OpenAI()
     completion = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "user", "content": prompt}
         ]
