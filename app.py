@@ -6,6 +6,8 @@ import json
 import re
 from streamlit_lottie import st_lottie
 import requests
+import plotly.graph_objects as go
+from streamlit_echarts import st_echarts
 
 # Load environment variables and initialize OpenAI client
 _ = load_dotenv(find_dotenv())
@@ -27,8 +29,8 @@ def generate_marketing_insights(persona, challenges):
 悩み、課題:
 {challenges}
 
-Based on the provided data, use inference to write bullet points outlining the key points and details for the following three items. 
-Ensure that you cover all the defined information and provide specific details in approximately 500 characters in Japanese. 
+Based on the provided data, use inference to write bullet points outlining the key points and details for the following items. 
+Ensure that you cover all the defined information and provide specific details. 
 For any information not provided, please infer it from the given information. We request that you make innovative, concrete, and deep insights that can be inferred from the user-entered information, giving the impression of profound understanding.
 
 1. デモグラフィック情報:
@@ -43,7 +45,7 @@ For any information not provided, please infer it from the given information. We
    - Infer and identify the problems or challenges currently faced by the target, the desired solutions or benefits they seek, the specific features or characteristics they require in products or services, the expected price range, preferred purchase channels (online, brick-and-mortar), potential barriers to purchase, necessary support or service to enhance satisfaction, current level of knowledge about the product or service, usage of competitor products or services, the purpose or intended use of the product or service, factors influencing their decision-making (quality, price, brand, reputation), post-purchase expectations or concerns, feedback or evaluation of the product or service, and potential future needs that may arise.
    - Provide actionable insights into how these needs can be addressed and fulfilled through tailored marketing strategies and personalized offerings.
 
-4.キャッチフレーズ:
+4. キャッチフレーズ:
     Based on the insights from points 1, 2, and 3, propose at least five catchphrases that would likely appeal to and attract the targeted persona.
     Craft compelling and memorable phrases that resonate with the target's demographic profile, psychographic characteristics, and specific needs.
     Use language and tone that align with the target's preferences and communication style to create a strong emotional connection and motivate action.
@@ -51,12 +53,55 @@ For any information not provided, please infer it from the given information. We
     Aim for concise, impactful, and easily understandable catchphrases that effectively communicate the core message and value proposition.
     Present the proposed catchphrases in a bullet-point format, ensuring each catchphrase is clearly distinguishable and stands on its own.
 
+5. ペルソナの特性スコア:
+   以下の特性について、1から10の範囲でスコアを付けてください。
+   - 収入レベル
+   - 教育レベル
+   - デジタル親和性
+   - ブランド志向性
+   - 価格感応度
+   - 健康意識
+   - 環境意識
+   - 社会的影響力
+   - 冒険心
+   - 家族重視度
+
 Please format your response as a JSON object with the following structure:
 {{
-    "demographic": "デモグラフィック情報のテキスト",
-    "psychographic": "サイコグラフィック情報のテキスト",
-    "challenges": "ターゲットの課題のテキスト",
-    "catchphrases": ["キャッチフレーズ1", "キャッチフレーズ2", "キャッチフレーズ3", "キャッチフレーズ4", "キャッチフレーズ5"]
+    "demographic": [
+        "ポイント1",
+        "ポイント2",
+        "ポイント3"
+    ],
+    "psychographic": [
+        "ポイント1",
+        "ポイント2",
+        "ポイント3"
+    ],
+    "challenges": [
+        "課題1",
+        "課題2",
+        "課題3"
+    ],
+    "catchphrases": [
+        "キャッチフレーズ1",
+        "キャッチフレーズ2",
+        "キャッチフレーズ3",
+        "キャッチフレーズ4",
+        "キャッチフレーズ5"
+    ],
+    "persona_scores": {{
+        "収入レベル": 7,
+        "教育レベル": 8,
+        "デジタル親和性": 9,
+        "ブランド志向性": 6,
+        "価格感応度": 5,
+        "健康意識": 8,
+        "環境意識": 7,
+        "社会的影響力": 6,
+        "冒険心": 7,
+        "家族重視度": 8
+    }}
 }}
 """
 
@@ -83,22 +128,24 @@ Please format your response as a JSON object with the following structure:
 def create_persona():
     st.subheader("ペルソナを作成")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         age = st.select_slider("年齢", options=list(range(18, 81)), value=30)
         gender = st.radio("性別", ["男性", "女性", "その他"])
         marital_status = st.selectbox("婚姻状況", ["未婚", "既婚", "離婚", "その他"])
         children = st.number_input("子供の数", min_value=0, max_value=10, value=0)
+
+    with col2:
         education = st.selectbox("最終学歴", ["高校卒", "専門学校卒", "大学卒", "大学院卒", "その他"])
         occupation = st.selectbox("職業", [
             "学生", "会社員", "公務員", "自営業", "フリーランス", "専業主婦/主夫",
             "パート/アルバイト", "無職", "その他"
         ])
-
-    with col2:
         income = st.select_slider("年収（万円）", options=[0] + list(range(200, 2001, 100)), value=400)
         location = st.selectbox("居住地", ["大都市", "中規模都市", "小規模都市", "郊外", "農村部"])
+
+    with col3:
         interests = st.multiselect("興味・関心", [
             "テクノロジー", "ファッション", "スポーツ", "旅行", "料理", "音楽", "映画", "読書",
             "アート", "健康", "環境", "投資", "ゲーム", "ペット", "その他"
@@ -125,8 +172,46 @@ def create_persona():
 
     return persona
 
+def display_radar_chart(scores):
+    options = {
+        "title": {"text": "ペルソナの特性スコア"},
+        "tooltip": {"trigger": "axis"},
+        "legend": {"data": ["スコア"]},
+        "radar": {
+            "indicator": [{"name": k, "max": 10} for k in scores.keys()]
+        },
+        "series": [{
+            "name": "ペルソナスコア",
+            "type": "radar",
+            "data": [{"value": list(scores.values()), "name": "スコア"}]
+        }]
+    }
+    st_echarts(options=options, height="400px")
+
 def main():
     st.set_page_config(page_title="ペルソナAIナビゲーター", layout="wide")
+
+    # Custom CSS
+    st.markdown("""
+    <style>
+    .big-font {
+        font-size:30px !important;
+        font-weight: bold;
+    }
+    .medium-font {
+        font-size:20px !important;
+        font-weight: bold;
+    }
+    .small-font {
+        font-size:14px !important;
+    }
+    .highlight {
+        background-color: #f0f2f6;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Load Lottie animation
     lottie_url = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
@@ -136,7 +221,7 @@ def main():
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.title("✨ ペルソナAIナビゲーター ✨")
+        st.markdown('<p class="big-font">✨ ペルソナAIナビゲーター ✨</p>', unsafe_allow_html=True)
         st.write("ペルソナを作成し、AIが詳細なマーケティングインサイトを生成します。")
 
     with col2:
@@ -174,19 +259,26 @@ def main():
             col1, col2 = st.columns(2)
 
             with col1:
-                with st.expander("デモグラフィック情報", expanded=True):
-                    st.write(insights["demographic"])
+                st.markdown('<p class="medium-font">デモグラフィック情報</p>', unsafe_allow_html=True)
+                for point in insights["demographic"]:
+                    st.markdown(f'<p class="small-font">• {point}</p>', unsafe_allow_html=True)
                 
-                with st.expander("サイコグラフィック情報", expanded=True):
-                    st.write(insights["psychographic"])
+                st.markdown('<p class="medium-font">サイコグラフィック情報</p>', unsafe_allow_html=True)
+                for point in insights["psychographic"]:
+                    st.markdown(f'<p class="small-font">• {point}</p>', unsafe_allow_html=True)
 
             with col2:
-                with st.expander("ターゲットの課題", expanded=True):
-                    st.write(insights["challenges"])
+                st.markdown('<p class="medium-font">ターゲットの課題</p>', unsafe_allow_html=True)
+                for challenge in insights["challenges"]:
+                    st.markdown(f'<p class="small-font">• {challenge}</p>', unsafe_allow_html=True)
                 
-                with st.expander("キャッチフレーズ", expanded=True):
-                    for phrase in insights["catchphrases"]:
-                        st.markdown(f"- {phrase}")
+                st.markdown('<p class="medium-font">キャッチフレーズ</p>', unsafe_allow_html=True)
+                for phrase in insights["catchphrases"]:
+                    st.markdown(f'<p class="small-font highlight">"{phrase}"</p>', unsafe_allow_html=True)
+
+            # Display radar chart
+            st.markdown('<p class="medium-font">ペルソナの特性分析</p>', unsafe_allow_html=True)
+            display_radar_chart(insights["persona_scores"])
 
             # Add download button for insights
             st.download_button(
