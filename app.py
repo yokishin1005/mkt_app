@@ -1,16 +1,25 @@
 import streamlit as st
 from openai import OpenAI
 import os
-
 from dotenv import load_dotenv, find_dotenv
-_= load_dotenv(find_dotenv())
+import json
+from streamlit_lottie import st_lottie
+import requests
+
+# Load environment variables
+_ = load_dotenv(find_dotenv())
 openapi_key = os.getenv('OPENAI_API_KEY')
 
-import streamlit as st
-from openai import OpenAI
+# Initialize OpenAI client
+client = OpenAI()
+
+def load_lottie_url(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 def generate_marketing_insights(gender, age, additional_info, challenges):
-    # プロンプト文の作成
     prompt = f"""
 あなたは、世界で屈指の優秀なマーケティングプロフェッショナルです。
 以下の情報をまずは読み込んでください
@@ -44,10 +53,16 @@ For any information not provided, please infer it from the given information. We
     Highlight the unique benefits, solutions, or experiences that the product, service, or brand offers to address the target's challenges and fulfill their desires.
     Aim for concise, impactful, and easily understandable catchphrases that effectively communicate the core message and value proposition.
     Present the proposed catchphrases in a bullet-point format, ensuring each catchphrase is clearly distinguishable and stands on its own.
+
+Please format your response as a JSON object with the following structure:
+{
+    "demographic": "デモグラフィック情報のテキスト",
+    "psychographic": "サイコグラフィック情報のテキスト",
+    "challenges": "ターゲットの課題のテキスト",
+    "catchphrases": ["キャッチフレーズ1", "キャッチフレーズ2", "キャッチフレーズ3", "キャッチフレーズ4", "キャッチフレーズ5"]
+}
 """
 
-    # OpenAI APIを使用して回答を生成
-    client = OpenAI()
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -55,31 +70,69 @@ For any information not provided, please infer it from the given information. We
         ]
     )
     res = completion.choices[0].message.content.strip()
-    return res
+    return json.loads(res)
 
-# Streamlitアプリケーションの設定
-st.set_page_config(page_title="Insight & CacthPhrase Generator", layout="wide")
+def main():
+    st.set_page_config(page_title="マーケティングインサイト生成器", layout="wide")
 
-# タイトルの表示
-st.title("Insight & CacthPhrase Generator")
+    # Load Lottie animation
+    lottie_url = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
+    lottie_json = load_lottie_url(lottie_url)
 
-# サイドバーの設定
-st.sidebar.header("ターゲット情報入力")
-gender = st.sidebar.radio("性別", ("男性", "女性"))
-age = st.sidebar.radio("年齢", ("10代", "20代", "30代", "40代", "50代", "60代", "70代以上"))
-additional_info = st.sidebar.text_input("その他の情報")
+    # Sidebar
+    with st.sidebar:
+        st.header("ターゲット情報入力")
+        gender = st.radio("性別", ("男性", "女性"), key="gender")
+        age = st.select_slider("年齢", options=["10代", "20代", "30代", "40代", "50代", "60代", "70代以上"], key="age")
+        additional_info = st.text_area("その他の情報", key="additional_info")
+        
+        challenges = []
+        num_challenges = st.number_input("悩み・課題の数", min_value=1, max_value=5, value=1, key="num_challenges")
+        for i in range(num_challenges):
+            challenge = st.text_input(f"悩み・課題 {i+1}", max_chars=40, key=f"challenge_{i}")
+            challenges.append(challenge)
 
-challenges = []
-num_challenges = st.sidebar.number_input("悩み・課題の数", min_value=1, max_value=5, value=1)
-for i in range(num_challenges):
-    challenge = st.sidebar.text_input(f"悩み・課題 {i+1}", max_chars=40)
-    challenges.append(challenge)
+    # Main content
+    col1, col2 = st.columns([2, 1])
 
-# インサイト生成ボタン
-if st.button("インサイトを生成"):
-    # マーケティングインサイトの生成
-    insights = generate_marketing_insights(gender, age, additional_info, ", ".join(challenges))
-    
-    # 生成されたインサイトの表示
-    st.subheader("マーケティングインサイト")
-    st.write(insights)
+    with col1:
+        st.title("マーケティングインサイト生成器")
+        st.write("ターゲットの情報を入力し、AIが詳細なマーケティングインサイトを生成します。")
+
+    with col2:
+        st_lottie(lottie_json, height=200, key="lottie")
+
+    if st.button("インサイトを生成", key="generate_button"):
+        with st.spinner("インサイトを生成中..."):
+            insights = generate_marketing_insights(gender, age, additional_info, ", ".join(challenges))
+
+        st.success("インサイトが生成されました！")
+
+        # Display insights
+        col1, col2 = st.columns(2)
+
+        with col1:
+            with st.expander("デモグラフィック情報", expanded=True):
+                st.write(insights["demographic"])
+            
+            with st.expander("サイコグラフィック情報", expanded=True):
+                st.write(insights["psychographic"])
+
+        with col2:
+            with st.expander("ターゲットの課題", expanded=True):
+                st.write(insights["challenges"])
+            
+            with st.expander("キャッチフレーズ", expanded=True):
+                for phrase in insights["catchphrases"]:
+                    st.markdown(f"- {phrase}")
+
+        # Add download button for insights
+        st.download_button(
+            label="インサイトをダウンロード",
+            data=json.dumps(insights, ensure_ascii=False, indent=2),
+            file_name="marketing_insights.json",
+            mime="application/json",
+        )
+
+if __name__ == "__main__":
+    main()
