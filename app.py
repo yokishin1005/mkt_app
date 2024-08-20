@@ -6,29 +6,25 @@ import json
 from streamlit_lottie import st_lottie
 import requests
 
-# Load environment variables
+# Load environment variables and initialize OpenAI client
 _ = load_dotenv(find_dotenv())
 openapi_key = os.getenv('OPENAI_API_KEY')
-
-# Initialize OpenAI client
 client = OpenAI()
 
 def load_lottie_url(url: str):
     r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+    return r.json() if r.status_code == 200 else None
 
-def generate_marketing_insights(gender, age, additional_info, challenges):
+def generate_marketing_insights(persona, challenges):
     prompt = f"""
 あなたは、世界で屈指の優秀なマーケティングプロフェッショナルです。
 以下の情報をまずは読み込んでください
 
 ターゲットの情報:
-- 性別: {gender}
-- 年齢: {age}
-- その他: {additional_info}
-- 悩み、課題: {challenges}
+{persona}
+
+悩み、課題:
+{challenges}
 
 Based on the provided data, use inference to write bullet points outlining the key points and details for the following three items. 
 Ensure that you cover all the defined information and provide specific details in approximately 500 characters in Japanese. 
@@ -55,12 +51,12 @@ For any information not provided, please infer it from the given information. We
     Present the proposed catchphrases in a bullet-point format, ensuring each catchphrase is clearly distinguishable and stands on its own.
 
 Please format your response as a JSON object with the following structure:
-{
+{{
     "demographic": "デモグラフィック情報のテキスト",
     "psychographic": "サイコグラフィック情報のテキスト",
     "challenges": "ターゲットの課題のテキスト",
     "catchphrases": ["キャッチフレーズ1", "キャッチフレーズ2", "キャッチフレーズ3", "キャッチフレーズ4", "キャッチフレーズ5"]
-}
+}}
 """
 
     completion = client.chat.completions.create(
@@ -70,69 +66,131 @@ Please format your response as a JSON object with the following structure:
         ]
     )
     res = completion.choices[0].message.content.strip()
-    return json.loads(res)
+    
+    try:
+        return json.loads(res)
+    except json.JSONDecodeError:
+        # JSONの解析に失敗した場合、エラーメッセージを含む辞書を返す
+        return {
+            "error": "APIからの応答をJSONとして解析できませんでした。",
+            "raw_response": res
+        }
+
+def create_persona():
+    st.subheader("ペルソナを作成")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        age = st.select_slider("年齢", options=list(range(18, 81)), value=30)
+        gender = st.radio("性別", ["男性", "女性", "その他"])
+        marital_status = st.selectbox("婚姻状況", ["未婚", "既婚", "離婚", "その他"])
+        children = st.number_input("子供の数", min_value=0, max_value=10, value=0)
+        education = st.selectbox("最終学歴", ["高校卒", "専門学校卒", "大学卒", "大学院卒", "その他"])
+        occupation = st.selectbox("職業", [
+            "学生", "会社員", "公務員", "自営業", "フリーランス", "専業主婦/主夫",
+            "パート/アルバイト", "無職", "その他"
+        ])
+
+    with col2:
+        income = st.select_slider("年収（万円）", options=[0] + list(range(200, 2001, 100)), value=400)
+        location = st.selectbox("居住地", ["大都市", "中規模都市", "小規模都市", "郊外", "農村部"])
+        interests = st.multiselect("興味・関心", [
+            "テクノロジー", "ファッション", "スポーツ", "旅行", "料理", "音楽", "映画", "読書",
+            "アート", "健康", "環境", "投資", "ゲーム", "ペット", "その他"
+        ])
+        values = st.multiselect("重視する価値観", [
+            "家族", "キャリア", "健康", "自己実現", "社会貢献", "冒険", "安定", "創造性",
+            "独立性", "伝統", "その他"
+        ])
+        tech_savviness = st.slider("テクノロジーへの親和性", 1, 5, 3)
+
+    persona = f"""
+年齢: {age}歳
+性別: {gender}
+婚姻状況: {marital_status}
+子供の数: {children}人
+最終学歴: {education}
+職業: {occupation}
+年収: {income}万円
+居住地: {location}
+興味・関心: {', '.join(interests)}
+重視する価値観: {', '.join(values)}
+テクノロジーへの親和性: {tech_savviness}/5
+"""
+
+    return persona
 
 def main():
-    st.set_page_config(page_title="マーケティングインサイト生成器", layout="wide")
+    st.set_page_config(page_title="ペルソナAIナビゲーター", layout="wide")
 
     # Load Lottie animation
     lottie_url = "https://assets5.lottiefiles.com/packages/lf20_V9t630.json"
     lottie_json = load_lottie_url(lottie_url)
 
-    # Sidebar
-    with st.sidebar:
-        st.header("ターゲット情報入力")
-        gender = st.radio("性別", ("男性", "女性"), key="gender")
-        age = st.select_slider("年齢", options=["10代", "20代", "30代", "40代", "50代", "60代", "70代以上"], key="age")
-        additional_info = st.text_area("その他の情報", key="additional_info")
-        
-        challenges = []
-        num_challenges = st.number_input("悩み・課題の数", min_value=1, max_value=5, value=1, key="num_challenges")
-        for i in range(num_challenges):
-            challenge = st.text_input(f"悩み・課題 {i+1}", max_chars=40, key=f"challenge_{i}")
-            challenges.append(challenge)
-
     # Main content
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.title("マーケティングインサイト生成器")
-        st.write("ターゲットの情報を入力し、AIが詳細なマーケティングインサイトを生成します。")
+        st.title("✨ ペルソナAIナビゲーター ✨")
+        st.write("ペルソナを作成し、AIが詳細なマーケティングインサイトを生成します。")
 
     with col2:
         st_lottie(lottie_json, height=200, key="lottie")
 
+    # Create persona
+    persona = create_persona()
+
+    # Challenges
+    st.subheader("課題と悩み")
+    challenges = st.multiselect(
+        "主な課題や悩みを選択してください（複数選択可）",
+        ["時間管理", "ストレス解消", "健康維持", "スキルアップ", "人間関係", "資産運用",
+         "仕事と家庭の両立", "デジタル活用", "自己実現", "キャリアアップ", "環境への配慮",
+         "ワークライフバランス", "育児", "介護", "老後の不安", "その他"],
+        key="challenges"
+    )
+    
+    if "その他" in challenges:
+        other_challenge = st.text_input("その他の課題や悩みを具体的に入力してください", key="other_challenge")
+        challenges = [c if c != "その他" else other_challenge for c in challenges]
+
     if st.button("インサイトを生成", key="generate_button"):
         with st.spinner("インサイトを生成中..."):
-            insights = generate_marketing_insights(gender, age, additional_info, ", ".join(challenges))
+            insights = generate_marketing_insights(persona, ", ".join(challenges))
 
-        st.success("インサイトが生成されました！")
+        if "error" in insights:
+            st.error(f"エラーが発生しました: {insights['error']}")
+            st.text("APIからの生の応答:")
+            st.code(insights['raw_response'])
+        else:
+            st.success("インサイトが生成されました！")
 
-        # Display insights
-        col1, col2 = st.columns(2)
+            # Display insights
+            col1, col2 = st.columns(2)
 
-        with col1:
-            with st.expander("デモグラフィック情報", expanded=True):
-                st.write(insights["demographic"])
-            
-            with st.expander("サイコグラフィック情報", expanded=True):
-                st.write(insights["psychographic"])
+            with col1:
+                with st.expander("デモグラフィック情報", expanded=True):
+                    st.write(insights["demographic"])
+                
+                with st.expander("サイコグラフィック情報", expanded=True):
+                    st.write(insights["psychographic"])
 
-        with col2:
-            with st.expander("ターゲットの課題", expanded=True):
-                st.write(insights["challenges"])
-            
-            with st.expander("キャッチフレーズ", expanded=True):
-                for phrase in insights["catchphrases"]:
-                    st.markdown(f"- {phrase}")
+            with col2:
+                with st.expander("ターゲットの課題", expanded=True):
+                    st.write(insights["challenges"])
+                
+                with st.expander("キャッチフレーズ", expanded=True):
+                    for phrase in insights["catchphrases"]:
+                        st.markdown(f"- {phrase}")
 
-        # Add download button for insights
-        st.download_button(
-            label="インサイトをダウンロード",
-            data=json.dumps(insights, ensure_ascii=False, indent=2),
-            file_name="marketing_insights.json",
-            mime="application/json",
-        )
+            # Add download button for insights
+            st.download_button(
+                label="インサイトをダウンロード",
+                data=json.dumps(insights, ensure_ascii=False, indent=2),
+                file_name="marketing_insights.json",
+                mime="application/json",
+            )
 
 if __name__ == "__main__":
     main()
