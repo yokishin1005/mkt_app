@@ -3,6 +3,7 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv, find_dotenv
 import json
+import re
 from streamlit_lottie import st_lottie
 import requests
 
@@ -66,6 +67,9 @@ Please format your response as a JSON object with the following structure:
         ]
     )
     res = completion.choices[0].message.content.strip()
+    
+    # Remove markdown code block syntax if present
+    res = re.sub(r'^```json\s*|\s*```$', '', res, flags=re.MULTILINE)
     
     try:
         return json.loads(res)
